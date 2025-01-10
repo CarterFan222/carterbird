@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <!-- Meta tags for iOS fullscreen behavior -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"> <!-- or 'default' or 'black' -->
-  <meta name="apple-mobile-web-app-title" content="CarterBird"> <!-- Name of the app when added to home screen -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CarterBird">
   <link rel="icon" type="image/png" href="https://i.imgur.com/4cw9VPA.png">
-  <link rel="apple-touch-icon" href="https://i.imgur.com/4cw9VPA.png"> <!-- Icon for iOS home screen -->
-  <link rel="manifest" href="manifest.json"> <!-- Optional: Web App Manifest file, if used -->
+  <link rel="apple-touch-icon" href="https://i.imgur.com/4cw9VPA.png">
+  <link rel="manifest" href="manifest.json">
   <title>CarterBird</title>
   <style>
     * {
@@ -88,7 +88,7 @@
     // Set canvas size based on window size
     function setCanvasSize() {
       if (window.innerWidth > 768) { // Desktop
-        canvas.width = Math.min(window.innerWidth * 0.9, 900); // Increase width to use more space
+        canvas.width = Math.min(window.innerWidth * 0.9, 900); // Wider pipes
         canvas.height = Math.min(window.innerHeight * 0.9, 700); // Increase height for more space
       } else { // Mobile
         canvas.width = window.innerWidth - 40;
@@ -139,7 +139,7 @@
 
     const game = {
       pipes: [],
-      pipeWidth: 50,
+      pipeWidth: 80, // Make pipes wider
       pipeGap: 150,
       score: 0,
       isOver: false,
@@ -205,9 +205,16 @@
       drawPipes() {
         ctx.shadowColor = '#ff0000';
         ctx.shadowBlur = 15;
-        ctx.fillStyle = 'rgba(139, 0, 0, 0.7)';
         
         for (const pipe of this.pipes) {
+          // Fire-like gradient fill
+          const gradient = ctx.createLinearGradient(pipe.x, 0, pipe.x, canvas.height);
+          gradient.addColorStop(0, 'yellow');
+          gradient.addColorStop(0.5, 'orange');
+          gradient.addColorStop(1, 'red');
+          
+          ctx.fillStyle = gradient;
+
           this.drawRoundedRect(pipe.x, 0, this.pipeWidth, pipe.topHeight, this.cornerRadius, true);
           this.drawRoundedRect(pipe.x, canvas.height - pipe.bottomHeight, this.pipeWidth, pipe.bottomHeight, this.cornerRadius, false);
         }
@@ -257,7 +264,7 @@
             return;
           }
           
-          scoreboard.textContent = `Score: ${this.score}`; // Remove speed from the display
+          scoreboard.textContent = `Score: ${this.score}`;
           requestAnimationFrame(() => this.update());
         }
       },
