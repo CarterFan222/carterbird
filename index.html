@@ -5,40 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>CarterBird</title>
   <link rel="icon" type="image/png" href="https://i.imgur.com/4cw9VPA.png">
-  
-  <!-- iOS home screen app settings -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="CarterBird">
-  
-  <!-- Home screen icons -->
-  <link rel="apple-touch-icon" href="https://i.imgur.com/4cw9VPA.png">
-  <link rel="apple-touch-icon" sizes="152x152" href="https://i.imgur.com/4cw9VPA.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="https://i.imgur.com/4cw9VPA.png">
-  <link rel="apple-touch-icon" sizes="167x167" href="https://i.imgur.com/4cw9VPA.png">
-  
-  <!-- Splash screen images -->
-  <link rel="apple-touch-startup-image" href="https://i.imgur.com/4cw9VPA.png">
-  
   <style>
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
       touch-action: manipulation;
-      -webkit-touch-callout: none;
-      -webkit-user-select: none;
-      user-select: none;
     }
-    
-    /* Prevent scrolling when in standalone mode */
-    html.standalone {
-      position: fixed;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-    }
-    
     body {
       display: flex;
       justify-content: center;
@@ -50,11 +23,11 @@
       background-repeat: no-repeat;
       font-family: system-ui, -apple-system, sans-serif;
       overflow: hidden;
-      padding-top: env(safe-area-inset-top, 20px);
+      padding-top: 20px;
     }
     .scoreboard {
       position: fixed;
-      top: env(safe-area-inset-top, 20px);
+      top: 20px;
       left: 50%;
       transform: translateX(-50%);
       font-size: min(30px, 8vw);
@@ -90,7 +63,6 @@
       touch-action: none;
       border: 2px solid #ff6b6b;
       border-radius: 10px;
-      margin-bottom: env(safe-area-inset-bottom, 0px);
     }
   </style>
 </head>
@@ -100,11 +72,6 @@
   <canvas id="gameCanvas"></canvas>
 
   <script>
-    // Check if running in standalone mode
-    if (window.navigator.standalone) {
-      document.documentElement.classList.add('standalone');
-    }
-    
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const scoreboard = document.querySelector('.scoreboard');
@@ -112,23 +79,215 @@
     const birdImg = new Image();
     birdImg.src = 'https://i.imgur.com/4cw9VPA.png';
 
-    // Set canvas size based on window size and safe areas
+    // Set canvas size based on window size
     function setCanvasSize() {
-      const topInset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sat') || '0');
-      const bottomInset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sab') || '0');
-      
       if (window.innerWidth > 768) { // Desktop
         canvas.width = Math.min(window.innerWidth * 0.8, 800);
         canvas.height = Math.min(window.innerHeight * 0.8, 600);
       } else { // Mobile
         canvas.width = window.innerWidth - 40;
-        canvas.height = window.innerHeight - topInset - bottomInset - 60;
+        canvas.height = window.innerHeight - 100;
       }
     }
     setCanvasSize();
 
-    // Rest of the game code remains the same...
-    [Previous game code continues unchanged...]
+    const bird = {
+      x: 50,
+      y: 150,
+      width: 34,
+      height: 24,
+      gravity: 0.5,
+      lift: -7,
+      velocity: 0,
+      rotation: 0,
+      
+      update() {
+        this.velocity += this.gravity;
+        this.y += this.velocity;
+        
+        // Update rotation based on velocity
+        this.rotation = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, this.velocity * 0.1));
+        
+        if (this.y + this.height > canvas.height) {
+          this.y = canvas.height - this.height;
+          this.velocity = 0;
+        } else if (this.y < 0) {
+          this.y = 0;
+          this.velocity = 0;
+        }
+      },
+      
+      draw() {
+        ctx.save();
+        ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+        ctx.rotate(this.rotation);
+        ctx.drawImage(birdImg, -this.width / 2, -this.height / 2, this.width, this.height);
+        ctx.restore();
+      },
+      
+      jump() {
+        this.velocity = this.lift;
+        this.rotation = -Math.PI / 4; // Rotate up when jumping
+      }
+    };
+
+    const game = {
+      pipes: [],
+      pipeWidth: 50,
+      pipeGap: 150,
+      score: 0,
+      isOver: false,
+      cornerRadius: 10,
+      baseSpeed: 2,
+      currentSpeed: 2,
+      
+      drawRoundedRect(x, y, width, height, radius, isTop) {
+        ctx.beginPath();
+        
+        if (isTop) {
+          ctx.moveTo(x, y);
+          ctx.lineTo(x + width - radius, y);
+          ctx.lineTo(x + width, y);
+          ctx.lineTo(x + width, y + height - radius);
+          ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+          ctx.lineTo(x + radius, y + height);
+          ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+          ctx.lineTo(x, y);
+        } else {
+          ctx.moveTo(x, y + radius);
+          ctx.quadraticCurveTo(x, y, x + radius, y);
+          ctx.lineTo(x + width - radius, y);
+          ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+          ctx.lineTo(x + width, y + height);
+          ctx.lineTo(x, y + height);
+          ctx.lineTo(x, y + radius);
+        }
+        
+        ctx.closePath();
+        ctx.fill();
+      },
+      
+      updateSpeed() {
+        this.currentSpeed = this.baseSpeed + (Math.floor(this.score / 50) * 0.5);
+      },
+      
+      addPipe() {
+        const pipeHeight = Math.floor(Math.random() * (canvas.height - this.pipeGap - 100)) + 50;
+        this.pipes.push({
+          x: canvas.width,
+          topHeight: pipeHeight,
+          bottomHeight: canvas.height - this.pipeGap - pipeHeight
+        });
+      },
+      
+      updatePipes() {
+        this.updateSpeed();
+        
+        if (this.pipes.length === 0 || this.pipes[this.pipes.length - 1].x < canvas.width - 200) {
+          this.addPipe();
+        }
+
+        for (let i = this.pipes.length - 1; i >= 0; i--) {
+          this.pipes[i].x -= this.currentSpeed;
+          if (this.pipes[i].x + this.pipeWidth < 0) {
+            this.pipes.splice(i, 1);
+            this.score++;
+          }
+        }
+      },
+      
+      drawPipes() {
+        ctx.shadowColor = '#ff0000';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = 'rgba(139, 0, 0, 0.7)';
+        
+        for (const pipe of this.pipes) {
+          this.drawRoundedRect(pipe.x, 0, this.pipeWidth, pipe.topHeight, this.cornerRadius, true);
+          this.drawRoundedRect(pipe.x, canvas.height - pipe.bottomHeight, this.pipeWidth, pipe.bottomHeight, this.cornerRadius, false);
+        }
+        
+        ctx.shadowBlur = 0;
+      },
+      
+      checkCollisions() {
+        for (const pipe of this.pipes) {
+          if (bird.x + bird.width > pipe.x && bird.x < pipe.x + this.pipeWidth) {
+            if (bird.y < pipe.topHeight || bird.y + bird.height > canvas.height - pipe.bottomHeight) {
+              return true;
+            }
+          }
+        }
+        return false;
+      },
+      
+      reset() {
+        bird.y = canvas.height / 3;
+        bird.velocity = 0;
+        bird.rotation = 0;
+        this.pipes = [];
+        this.score = 0;
+        this.isOver = false;
+        this.currentSpeed = this.baseSpeed;
+        gameOverText.style.display = 'none';
+        this.start();
+      },
+      
+      update() {
+        if (!this.isOver) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          bird.update();
+          this.updatePipes();
+          
+          this.drawPipes();
+          bird.draw();
+          
+          if (this.checkCollisions()) {
+            this.isOver = true;
+            gameOverText.style.display = 'block';
+            return;
+          }
+          
+          scoreboard.textContent = `Score: ${this.score} (Speed: ${this.currentSpeed.toFixed(1)})`;
+          requestAnimationFrame(() => this.update());
+        }
+      },
+      
+      start() {
+        this.update();
+      }
+    };
+
+    function handleInteraction(e) {
+      e.preventDefault();
+      if (game.isOver) {
+        game.reset();
+      } else {
+        bird.jump();
+      }
+    }
+
+    canvas.addEventListener('touchstart', handleInteraction, { passive: false });
+    canvas.addEventListener('click', handleInteraction);
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        handleInteraction(e);
+      }
+    });
+
+    document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+
+    window.addEventListener('resize', () => {
+      setCanvasSize();
+      if (!game.isOver) {
+        game.reset();
+      }
+    });
+
+    game.start();
   </script>
 </body>
 </html>
