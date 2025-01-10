@@ -22,7 +22,7 @@
       justify-content: center;
       align-items: start;
       min-height: 100vh;
-      background-image: url('https://i.imgur.com/ehcFg4u.gif'); /* New Background GIF */
+      background-image: url('https://i.imgur.com/ehcFg4u.gif');
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
@@ -38,11 +38,11 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      font-size: min(30px, 8vw); /* Adjusted font-size for both */
-      color: #d0b39c; /* Earthy grayish brown */
+      font-size: min(30px, 8vw);
+      color: #d0b39c;
       font-weight: bold;
       z-index: 10;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6); /* Softer shadow */
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
     }
     .scoreboard span {
       margin: 0 10px;
@@ -53,17 +53,17 @@
       left: 50%;
       transform: translate(-50%, -50%);
       font-size: min(24px, 6vw);
-      color: #d0b39c; /* Earthy grayish brown */
+      color: #d0b39c;
       font-weight: bold;
       display: none;
       z-index: 10;
       text-align: center;
       text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
-      background: rgba(40, 30, 20, 0.85); /* Dark earthy background */
+      background: rgba(40, 30, 20, 0.85);
       padding: 1rem;
       border-radius: 10px;
       white-space: nowrap;
-      border: 2px solid #d0b39c; /* Earthy brown border */
+      border: 2px solid #d0b39c;
       backdrop-filter: blur(5px);
       -webkit-backdrop-filter: blur(5px);
     }
@@ -72,11 +72,11 @@
       max-width: 100vw;
       max-height: 100vh;
       touch-action: none;
-      border: 2px solid #d0b39c; /* Earthy grayish brown border */
+      border: 2px solid #d0b39c;
       border-radius: 10px;
     }
     .highscore {
-      font-size: inherit; /* Inherit font size from scoreboard */
+      font-size: inherit;
       color: #d0b39c;
       font-weight: bold;
       text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
@@ -110,29 +110,28 @@
     const birdImg = new Image();
     birdImg.src = 'https://i.imgur.com/4cw9VPA.png';
 
-    // Load the new pipe texture
     const pipeTexture = new Image();
-    pipeTexture.src = 'https://i.imgur.com/BSAw5ql.png'; // The new pillar-shaped texture for the pipes
+    pipeTexture.src = 'https://i.imgur.com/BSAw5ql.png';
 
-    // Wait for the texture to load before starting the game
-    pipeTexture.onload = () => {
-      setCanvasSize();
-      game.start();
-    };
+    let lastTime = 0;
+    const FPS = 60;
+    const frameInterval = 1000 / FPS;
 
-    // Highscore management
     let highScore = parseInt(localStorage.getItem('carterbird-highscore')) || 0;
     highscoreDisplay.textContent = `Best: ${highScore}`;
 
-    // Set canvas size based on window size
     function setCanvasSize() {
-      if (window.innerWidth > 768) { // Desktop
-        canvas.width = Math.min(window.innerWidth * 0.9, 900); // Wider pipes
-        canvas.height = Math.min(window.innerHeight * 0.9, 700); // Increase height for more space
-      } else { // Mobile
-        canvas.width = window.innerWidth - 40;
-        canvas.height = window.innerHeight - 100;
+      const dpr = window.devicePixelRatio || 1;
+      if (window.innerWidth > 768) {
+        canvas.width = Math.min(window.innerWidth * 0.9, 900) * dpr;
+        canvas.height = Math.min(window.innerHeight * 0.9, 700) * dpr;
+      } else {
+        canvas.width = (window.innerWidth - 40) * dpr;
+        canvas.height = (window.innerHeight - 100) * dpr;
       }
+      canvas.style.width = canvas.width / dpr + 'px';
+      canvas.style.height = canvas.height / dpr + 'px';
+      ctx.scale(dpr, dpr);
     }
 
     const bird = {
@@ -140,20 +139,20 @@
       y: 150,
       width: 34,
       height: 24,
-      gravity: 0.5,
-      lift: -7,
+      gravity: 0.35,  // Increased gravity
+      lift: -6,      // Increased lift force
       velocity: 0,
       rotation: 0,
       
-      update() {
-        this.velocity += this.gravity;
-        this.y += this.velocity;
+      update(deltaTime) {
+        const gravityStep = this.gravity * (deltaTime / frameInterval);
+        this.velocity += gravityStep;
+        this.y += this.velocity * (deltaTime / frameInterval);
         
-        // Update rotation based on velocity
         this.rotation = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, this.velocity * 0.1));
         
-        if (this.y + this.height > canvas.height) {
-          this.y = canvas.height - this.height;
+        if (this.y + this.height > canvas.height / window.devicePixelRatio) {
+          this.y = canvas.height / window.devicePixelRatio - this.height;
           this.velocity = 0;
         } else if (this.y < 0) {
           this.y = 0;
@@ -171,67 +170,75 @@
       
       jump() {
         this.velocity = this.lift;
-        this.rotation = -Math.PI / 4; // Rotate up when jumping
+        this.rotation = -Math.PI / 4;
       }
     };
 
     const game = {
       pipes: [],
-      pipeWidth: 80, // Make pipes wider
+      pipeWidth: 80,
       pipeGap: 150,
       score: 0,
       isOver: false,
       cornerRadius: 10,
-      baseSpeed: 2,
-      currentSpeed: 2,
+      baseSpeed: 2.5,  // Increased base speed
+      currentSpeed: 2.5,
       
       addPipe() {
-        const pipeHeight = Math.floor(Math.random() * (canvas.height - this.pipeGap - 100)) + 50;
+        const pipeHeight = Math.floor(Math.random() * (canvas.height / window.devicePixelRatio - this.pipeGap - 100)) + 50;
         this.pipes.push({
-          x: canvas.width,
+          x: canvas.width / window.devicePixelRatio,
           topHeight: pipeHeight,
-          bottomHeight: canvas.height - this.pipeGap - pipeHeight
+          bottomHeight: canvas.height / window.devicePixelRatio - this.pipeGap - pipeHeight,
+          passed: false
         });
       },
       
       updateSpeed() {
-        this.currentSpeed = this.baseSpeed + (Math.floor(this.score / 50) * 0.5);
+        this.currentSpeed = this.baseSpeed + (Math.floor(this.score / 30) * 0.3);  // Faster speed increase
       },
       
-      updatePipes() {
+      updatePipes(deltaTime) {
         this.updateSpeed();
         
-        if (this.pipes.length === 0 || this.pipes[this.pipes.length - 1].x < canvas.width - 200) {
+        if (this.pipes.length === 0 || this.pipes[this.pipes.length - 1].x < canvas.width / window.devicePixelRatio - 200) {
           this.addPipe();
         }
 
+        const speedStep = this.currentSpeed * (deltaTime / frameInterval);
+        
         for (let i = this.pipes.length - 1; i >= 0; i--) {
-          this.pipes[i].x -= this.currentSpeed;
+          this.pipes[i].x -= speedStep;
+          
+          if (!this.pipes[i].passed && this.pipes[i].x + this.pipeWidth < bird.x) {
+            this.pipes[i].passed = true;
+            this.score++;
+            scoreDisplay.textContent = `Score: ${this.score}`;
+          }
+          
           if (this.pipes[i].x + this.pipeWidth < 0) {
             this.pipes.splice(i, 1);
-            this.score++;
           }
         }
       },
       
       drawPipes() {
-        ctx.shadowColor = '#3e2c2a'; /* Dark earthy shadow for pipes */
+        ctx.shadowColor = '#3e2c2a';
         ctx.shadowBlur = 15;
         
         for (const pipe of this.pipes) {
-          // Draw the top part of the pipe with the flipped texture (vertical flip only for top pipes)
-          ctx.save(); // Save the current context state
-          ctx.scale(1, -1);  // Flip only the Y-axis (top pipes)
+          ctx.save();
+          ctx.scale(1, -1);
           ctx.drawImage(
             pipeTexture, 0, 0, pipeTexture.width, pipe.topHeight,
             pipe.x, -pipe.topHeight, this.pipeWidth, pipe.topHeight
           );
-          ctx.restore(); // Restore the context back to original state
+          ctx.restore();
 
-          // Draw the bottom part of the pipe
           ctx.drawImage(
             pipeTexture, 0, 0, pipeTexture.width, pipe.bottomHeight,
-            pipe.x, canvas.height - pipe.bottomHeight, this.pipeWidth, pipe.bottomHeight
+            pipe.x, canvas.height / window.devicePixelRatio - pipe.bottomHeight,
+            this.pipeWidth, pipe.bottomHeight
           );
         }
 
@@ -241,7 +248,8 @@
       checkCollisions() {
         for (const pipe of this.pipes) {
           if (bird.x + bird.width > pipe.x && bird.x < pipe.x + this.pipeWidth) {
-            if (bird.y < pipe.topHeight || bird.y + bird.height > canvas.height - pipe.bottomHeight) {
+            if (bird.y < pipe.topHeight || 
+                bird.y + bird.height > canvas.height / window.devicePixelRatio - pipe.bottomHeight) {
               return true;
             }
           }
@@ -262,7 +270,7 @@
       },
       
       reset() {
-        bird.y = canvas.height / 3;
+        bird.y = canvas.height / window.devicePixelRatio / 3;
         bird.velocity = 0;
         bird.rotation = 0;
         this.pipes = [];
@@ -271,15 +279,21 @@
         this.currentSpeed = this.baseSpeed;
         gameOverText.style.display = 'none';
         highscoreDisplay.classList.remove('new-highscore');
+        scoreDisplay.textContent = 'Score: 0';
+        lastTime = 0;
         this.start();
       },
       
-      update() {
-        if (!this.isOver) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
+      update(currentTime) {
+        if (!lastTime) lastTime = currentTime;
+        const deltaTime = currentTime - lastTime;
+        lastTime = currentTime;
 
-          bird.update();
-          this.updatePipes();
+        if (!this.isOver) {
+          ctx.clearRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
+
+          bird.update(deltaTime);
+          this.updatePipes(deltaTime);
           
           this.drawPipes();
           bird.draw();
@@ -291,14 +305,18 @@
             return;
           }
 
-          scoreDisplay.textContent = `Score: ${this.score}`;
-          requestAnimationFrame(() => this.update());
+          requestAnimationFrame((time) => this.update(time));
         }
       },
       
       start() {
-        this.update();
+        requestAnimationFrame((time) => this.update(time));
       }
+    };
+
+    pipeTexture.onload = () => {
+      setCanvasSize();
+      game.reset();
     };
 
     function handleInteraction(e) {
