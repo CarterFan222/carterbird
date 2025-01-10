@@ -15,7 +15,7 @@
     body {
       display: flex;
       justify-content: center;
-      align-items: center;
+      align-items: start;
       min-height: 100vh;
       background-image: url('https://i.imgur.com/cUfE8e2.jpeg');
       background-size: cover;
@@ -23,6 +23,7 @@
       background-repeat: no-repeat;
       font-family: system-ui, -apple-system, sans-serif;
       overflow: hidden;
+      padding-top: 20px;
     }
     .scoreboard {
       position: fixed;
@@ -57,7 +58,7 @@
     }
     canvas {
       background-color: transparent;
-      max-width: 100%;
+      max-width: 100vw;
       max-height: 100vh;
       touch-action: none;
       border: 2px solid #ff6b6b;
@@ -65,11 +66,10 @@
     }
   </style>
 </head>
-<!-- Rest of the code remains exactly the same -->
 <body>
   <div class="scoreboard">Score: 0</div>
   <div class="game-over">Game Over! Tap to Restart</div>
-  <canvas id="gameCanvas" width="320" height="480"></canvas>
+  <canvas id="gameCanvas"></canvas>
 
   <script>
     const canvas = document.getElementById('gameCanvas');
@@ -79,6 +79,18 @@
     const birdImg = new Image();
     birdImg.src = 'https://i.imgur.com/4cw9VPA.png';
 
+    // Set canvas size based on window size
+    function setCanvasSize() {
+      if (window.innerWidth > 768) { // Desktop
+        canvas.width = Math.min(window.innerWidth * 0.8, 800);
+        canvas.height = Math.min(window.innerHeight * 0.8, 600);
+      } else { // Mobile
+        canvas.width = window.innerWidth - 40;
+        canvas.height = window.innerHeight - 100;
+      }
+    }
+    setCanvasSize();
+
     const bird = {
       x: 50,
       y: 150,
@@ -87,10 +99,14 @@
       gravity: 0.5,
       lift: -7,
       velocity: 0,
+      rotation: 0,
       
       update() {
         this.velocity += this.gravity;
         this.y += this.velocity;
+        
+        // Update rotation based on velocity
+        this.rotation = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, this.velocity * 0.1));
         
         if (this.y + this.height > canvas.height) {
           this.y = canvas.height - this.height;
@@ -102,11 +118,16 @@
       },
       
       draw() {
-        ctx.drawImage(birdImg, this.x, this.y, this.width, this.height);
+        ctx.save();
+        ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+        ctx.rotate(this.rotation);
+        ctx.drawImage(birdImg, -this.width / 2, -this.height / 2, this.width, this.height);
+        ctx.restore();
       },
       
       jump() {
         this.velocity = this.lift;
+        this.rotation = -Math.PI / 4; // Rotate up when jumping
       }
     };
 
@@ -117,6 +138,8 @@
       score: 0,
       isOver: false,
       cornerRadius: 10,
+      baseSpeed: 2,
+      currentSpeed: 2,
       
       drawRoundedRect(x, y, width, height, radius, isTop) {
         ctx.beginPath();
@@ -144,6 +167,10 @@
         ctx.fill();
       },
       
+      updateSpeed() {
+        this.currentSpeed = this.baseSpeed + (Math.floor(this.score / 50) * 0.5);
+      },
+      
       addPipe() {
         const pipeHeight = Math.floor(Math.random() * (canvas.height - this.pipeGap - 100)) + 50;
         this.pipes.push({
@@ -154,12 +181,14 @@
       },
       
       updatePipes() {
+        this.updateSpeed();
+        
         if (this.pipes.length === 0 || this.pipes[this.pipes.length - 1].x < canvas.width - 200) {
           this.addPipe();
         }
 
         for (let i = this.pipes.length - 1; i >= 0; i--) {
-          this.pipes[i].x -= 2;
+          this.pipes[i].x -= this.currentSpeed;
           if (this.pipes[i].x + this.pipeWidth < 0) {
             this.pipes.splice(i, 1);
             this.score++;
@@ -192,11 +221,13 @@
       },
       
       reset() {
-        bird.y = 150;
+        bird.y = canvas.height / 3;
         bird.velocity = 0;
+        bird.rotation = 0;
         this.pipes = [];
         this.score = 0;
         this.isOver = false;
+        this.currentSpeed = this.baseSpeed;
         gameOverText.style.display = 'none';
         this.start();
       },
@@ -205,7 +236,6 @@
         if (!this.isOver) {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           
-          // Semi-transparent dark overlay
           ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           
@@ -221,7 +251,7 @@
             return;
           }
           
-          scoreboard.textContent = `Score: ${this.score}`;
+          scoreboard.textContent = `Score: ${this.score} (Speed: ${this.currentSpeed.toFixed(1)})`;
           requestAnimationFrame(() => this.update());
         }
       },
@@ -250,14 +280,12 @@
 
     document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
 
-    function resizeCanvas() {
-      const scale = Math.min(window.innerWidth / canvas.width, window.innerHeight / canvas.height);
-      canvas.style.transform = `scale(${scale})`;
-      canvas.style.transformOrigin = 'center center';
-    }
-    
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
+    window.addEventListener('resize', () => {
+      setCanvasSize();
+      if (!game.isOver) {
+        game.reset();
+      }
+    });
 
     game.start();
   </script>
