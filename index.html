@@ -82,8 +82,8 @@
     // Set canvas size based on window size
     function setCanvasSize() {
       if (window.innerWidth > 768) { // Desktop
-        canvas.width = Math.min(window.innerWidth * 0.8, 800);
-        canvas.height = Math.min(window.innerHeight * 0.8, 600);
+        canvas.width = Math.min(window.innerWidth * 0.9, 900); // Increase width to use more space
+        canvas.height = Math.min(window.innerHeight * 0.9, 700); // Increase height for more space
       } else { // Mobile
         canvas.width = window.innerWidth - 40;
         canvas.height = window.innerHeight - 100;
@@ -251,7 +251,7 @@
             return;
           }
           
-          scoreboard.textContent = `Score: ${this.score} (Speed: ${this.currentSpeed.toFixed(1)})`;
+          scoreboard.textContent = `Score: ${this.score}`; // Remove speed from the display
           requestAnimationFrame(() => this.update());
         }
       },
