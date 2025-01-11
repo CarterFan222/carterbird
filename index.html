@@ -43,6 +43,7 @@
       font-weight: bold;
       z-index: 10;
       text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
+      display: none;
     }
     .scoreboard span {
       margin: 0 10px;
@@ -59,21 +60,69 @@
       z-index: 10;
       text-align: center;
       text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
-      background: rgba(50, 50, 50, 0.7); /* Darker grey background with more transparency */
+      background: rgba(50, 50, 50, 0.7);
       padding: 1rem;
       border-radius: 10px;
       white-space: nowrap;
-      border: 2px solid #4e4e4e; /* Dark earthy grey border */
-      backdrop-filter: blur(10px); /* Increased blur effect */
+      border: 2px solid #4e4e4e;
+      backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
     }
+    .main-menu {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 20;
+      background: rgba(50, 50, 50, 0.8);
+      padding: 2rem;
+      border-radius: 15px;
+      border: 2px solid #4e4e4e;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .menu-title {
+      color: #d0b39c;
+      font-size: min(40px, 10vw);
+      font-weight: bold;
+      margin-bottom: 20px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
+    }
+    .menu-bird {
+      width: 68px;
+      height: 48px;
+      margin: 20px auto;
+      animation: float 2s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+    .start-button {
+      background: #d0b39c;
+      color: #333;
+      border: none;
+      padding: 15px 30px;
+      font-size: min(24px, 6vw);
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: transform 0.2s, background-color 0.2s;
+      margin-top: 20px;
+    }
+    .start-button:hover {
+      background: #c0a38c;
+      transform: scale(1.05);
+    }
     canvas {
-      background-color: rgba(50, 50, 50, 0.5); /* Darker grey background with more transparency */
+      background-color: rgba(50, 50, 50, 0.5);
       max-width: 100vw;
       max-height: 100vh;
       touch-action: none;
-      border: 2px solid #4e4e4e; /* Dark earthy grey border */
+      border: 2px solid #4e4e4e;
       border-radius: 10px;
+      display: none;
     }
     .highscore {
       font-size: inherit;
@@ -93,6 +142,12 @@
   </style>
 </head>
 <body>
+  <div class="main-menu">
+    <h1 class="menu-title">CarterBird</h1>
+    <img src="https://i.imgur.com/4cw9VPA.png" alt="Bird" class="menu-bird">
+    <div class="highscore">Best: 0</div>
+    <button class="start-button">Start Game</button>
+  </div>
   <div class="scoreboard">
     <span class="score">Score: 0</span>
     <span class="highscore">Best: 0</span>
@@ -104,9 +159,11 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const scoreboard = document.querySelector('.scoreboard');
-    const highscoreDisplay = document.querySelector('.highscore');
+    const highscoreDisplays = document.querySelectorAll('.highscore');
     const scoreDisplay = document.querySelector('.score');
     const gameOverText = document.querySelector('.game-over');
+    const mainMenu = document.querySelector('.main-menu');
+    const startButton = document.querySelector('.start-button');
     const birdImg = new Image();
     birdImg.src = 'https://i.imgur.com/4cw9VPA.png';
 
@@ -118,7 +175,7 @@
     const frameInterval = 1000 / FPS;
 
     let highScore = parseInt(localStorage.getItem('carterbird-highscore')) || 0;
-    highscoreDisplay.textContent = `Best: ${highScore}`;
+    highscoreDisplays.forEach(display => display.textContent = `Best: ${highScore}`);
 
     function setCanvasSize() {
       const dpr = window.devicePixelRatio || 1;
@@ -261,8 +318,10 @@
         if (this.score > highScore) {
           highScore = this.score;
           localStorage.setItem('carterbird-highscore', highScore);
-          highscoreDisplay.textContent = `Best: ${highScore}`;
-          highscoreDisplay.classList.add('new-highscore');
+          highscoreDisplays.forEach(display => {
+            display.textContent = `Best: ${highScore}`;
+            display.classList.add('new-highscore');
+          });
           gameOverText.textContent = 'New High Score! Tap to Restart';
         } else {
           gameOverText.textContent = 'Game Over! Tap to Restart';
@@ -278,7 +337,7 @@
         this.isOver = false;
         this.currentSpeed = this.baseSpeed;
         gameOverText.style.display = 'none';
-        highscoreDisplay.classList.remove('new-highscore');
+        highscoreDisplays.forEach(display => display.classList.remove('new-highscore'));
         scoreDisplay.textContent = 'Score: 0';
         lastTime = 0;
         this.start();
@@ -311,28 +370,47 @@
       
       start() {
         requestAnimationFrame((time) => this.update(time));
+      },
+
+      returnToMenu() {
+        canvas.style.display = 'none';
+        scoreboard.style.display = 'none';
+        gameOverText.style.display = 'none';
+        mainMenu.style.display = 'block';
       }
     };
 
-    pipeTexture.onload = () => {
+    function startGame() {
+      mainMenu.style.display = 'none';
+      canvas.style.display = 'block';
+      scoreboard.style.display = 'flex';
       setCanvasSize();
       game.reset();
+    }
+
+    pipeTexture.onload = () => {
+      setCanvasSize();
     };
 
     function handleInteraction(e) {
       e.preventDefault();
       if (game.isOver) {
-        game.reset();
+        game.returnToMenu();
       } else {
         bird.jump();
       }
     }
 
+    startButton.addEventListener('click', startGame);
     canvas.addEventListener('touchstart', handleInteraction, { passive: false });
     canvas.addEventListener('click', handleInteraction);
     document.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
-        handleInteraction(e);
+        if (mainMenu.style.display !== 'none') {
+          startGame();
+        } else {
+          handleInteraction(e);
+        }
       }
     });
 
@@ -340,7 +418,7 @@
 
     window.addEventListener('resize', () => {
       setCanvasSize();
-      if (!game.isOver) {
+      if (!game.isOver && mainMenu.style.display === 'none') {
         game.reset();
       }
     });
