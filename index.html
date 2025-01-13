@@ -6,8 +6,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="CarterBird">
-  <link rel="icon" type="image/png" href="https://i.imgur.com/WYhogQk.png"> <!-- Updated favicon -->
-  <link rel="apple-touch-icon" href="https://i.imgur.com/WYhogQk.png"> <!-- Updated apple touch icon -->
+  <link rel="icon" type="image/png" href="https://i.imgur.com/WYhogQk.png">
+  <link rel="apple-touch-icon" href="https://i.imgur.com/WYhogQk.png">
   <link rel="manifest" href="manifest.json">
   <title>CarterBird</title>
   <style>
@@ -29,7 +29,7 @@
       font-family: system-ui, -apple-system, sans-serif;
       overflow: hidden;
       padding-top: 20px;
-      background-color: #8b6e5e; /* Earthy grey-brown color */
+      background-color: #8b6e5e;
     }
     .scoreboard {
       position: fixed;
@@ -241,13 +241,34 @@
       cornerRadius: 10,
       baseSpeed: 2.5,
       currentSpeed: 2.5,
+      minPipeHeight: 50,  // Minimum pipe height
+      maxPipeVariation: 150,  // Maximum height difference between consecutive pipes
       
       addPipe() {
-        const pipeHeight = Math.floor(Math.random() * (canvas.height / window.devicePixelRatio - this.pipeGap - 100)) + 50;
+        const canvasHeight = canvas.height / window.devicePixelRatio;
+        const availableHeight = canvasHeight - this.pipeGap - 100; // Leave some space at top and bottom
+        
+        let pipeHeight;
+        
+        if (this.pipes.length === 0) {
+          // For the first pipe, generate a height in the middle range
+          pipeHeight = availableHeight / 2 + (Math.random() * 100 - 50);
+        } else {
+          // Get the height of the previous pipe
+          const previousPipe = this.pipes[this.pipes.length - 1];
+          const previousHeight = previousPipe.topHeight;
+          
+          // Generate new height within a range of the previous height
+          const minHeight = Math.max(this.minPipeHeight, previousHeight - this.maxPipeVariation);
+          const maxHeight = Math.min(availableHeight - this.minPipeHeight, previousHeight + this.maxPipeVariation);
+          
+          pipeHeight = minHeight + Math.random() * (maxHeight - minHeight);
+        }
+        
         this.pipes.push({
           x: canvas.width / window.devicePixelRatio,
           topHeight: pipeHeight,
-          bottomHeight: canvas.height / window.devicePixelRatio - this.pipeGap - pipeHeight,
+          bottomHeight: canvasHeight - this.pipeGap - pipeHeight,
           passed: false
         });
       },
@@ -350,7 +371,7 @@
         lastTime = currentTime;
 
         if (!this.isOver) {
-          ctx.clearRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
+ctx.clearRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
 
           bird.update(deltaTime);
           this.updatePipes(deltaTime);
